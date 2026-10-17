@@ -5,7 +5,7 @@ import requests
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# --- Render Port Binding Fix ---
+# --- Render Port Binding Fix (যাতে Render-এ কোনো পোর্ট ওয়ার্নিং না আসে) ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -19,16 +19,9 @@ def run_dummy_server():
 
 threading.Thread(target=run_dummy_server, daemon=True).start()
 
-# --- Discord Bot Configuration ---
+# --- Discord Bot Setup ---
 TOKEN = os.getenv("DISCORD_TOKEN")
-FALIX_API_KEY = "flx_live_3gPqUoiWErbgFjYemiThfOCRcQrvv9VIZ4gDPHrX"
-SERVER_ID = "3517994"
-
-headers = {
-    "Authorization": f"Bearer {FALIX_API_KEY}",
-    "Accept": "application/json",
-    "Content-Type": "application/json"
-}
+SERVER_IP = "SRSHOHAG9834.aternos.me"  # তোমার Aternos সার্ভার আইপি
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -36,50 +29,26 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'Bot logged in as {bot.user}')
-
-@bot.command(name="VPN")
-async def start_server(ctx):
-    await ctx.send("⌛ সার্ভার অন করার রিকোয়েস্ট পাঠানো হচ্ছে...")
-    
-    # FalixNodes API Endpoint
-    urls = [
-        f"https://client.falixnodes.net/api/client/servers/{SERVER_ID}/power",
-        f"https://panel.falixnodes.net/api/client/servers/{SERVER_ID}/power"
-    ]
-    
-    payload = {"signal": "start"}
-    success = False
-
-    for url in urls:
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            if response.status_code in [204, 200]:
-                await ctx.send("✅ **মাইনক্রাফট সার্ভার অন হচ্ছে!** ১-২ মিনিটের মধ্যে ঢুকতে পারবে।")
-                success = True
-                break
-            elif response.status_code == 412:
-                await ctx.send("⚠️ সার্ভারটি ইতোমধ্যে চালু আছে বা অন হচ্ছে!")
-                success = True
-                break
-        except Exception as e:
-            pass
-
-    if not success:
-        await ctx.send(f"❌ সার্ভার অন করা যায়নি। (Error Code: 403 - API Key/Permissions issue)")
+    print(f'Bot logged in successfully as {bot.user}')
 
 @bot.command(name="status")
 async def check_status(ctx):
-    url = f"https://client.falixnodes.net/api/client/servers/{SERVER_ID}"
+    # মাইনক্রাফট সার্ভার স্ট্যাটাস চেক করার পাবলিক এপিআই
+    url = f"https://api.mcsrvstat.us/2/{SERVER_IP}"
     try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            state = data['attributes']['current_state']
-            await ctx.send(f"📊 **সার্ভার স্ট্যাটাস:** `{state.upper()}`")
+        response = requests.get(url)
+        data = response.json()
+        if data.get("online"):
+            players = data["players"]["online"]
+            max_players = data["players"]["max"]
+            await ctx.send(f"✅ সার্ভার বর্তমানে **ONLINE** আছে! \n👥 প্লেয়ার খেলছে: {players}/{max_players}")
         else:
-            await ctx.send(f"❌ স্ট্যাটাস আনা যায়নি। Error: {response.status_code}")
+            await ctx.send(f"❌ সার্ভার বর্তমানে **OFFLINE** আছে! আগে Aternos ওয়েবসাইট বা অ্যাপ থেকে স্টার্ট করে নাও।")
     except Exception as e:
-        await ctx.send("❌ স্ট্যাটাস চেক করতে সমস্যা হয়েছে।")
+        await ctx.send("⚠️ সার্ভার স্ট্যাটাস চেক করতে সমস্যা হয়েছে।")
+
+@bot.command(name="ping")
+async def ping(ctx):
+    await ctx.send(f"🏓 Pong! Latency: {round(bot.latency * 1000)}ms")
 
 bot.run(TOKEN)
