@@ -2,9 +2,26 @@ import os
 import discord
 from discord.ext import commands
 import requests
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Discord Bot Token & Configuration
-TOKEN = os.getenv("DISCORD_TOKEN")  # Render-এর Environment Variable থেকে নেবে
+# --- Render Port Binding Fix (Render Warning এড়ানোর জন্য) ---
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running successfully!")
+
+def run_dummy_server():
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), DummyHandler)
+    server.serve_forever()
+
+# ব্যাকগ্রাউন্ডে ডামি সার্ভার চালু করা
+threading.Thread(target=run_dummy_server, daemon=True).start()
+
+# --- Discord Bot & FalixNodes Configuration ---
+TOKEN = os.getenv("DISCORD_TOKEN")  # Render-এর Environment Variable থেকে টোকেন নেবে
 FALIX_API_KEY = "flx_live_N41x35HDALAJohiMSUw8M4dHvD7RGSHpjX7AJ2xh"
 SERVER_ID = "3517994"  # তোমার FalixNodes সার্ভার আইডি
 
